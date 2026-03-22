@@ -1,0 +1,23 @@
+# Python 缓存和虚拟环境
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+
+# 项目核心忽略项 (避免把几十 GB 的虚拟机和镜像传到 Git)
+# 1. 自动下载的 QEMU 模拟器本身
+qemu/
+qemu_setup.exe
+
+# 2. 所有的虚拟机产生的磁盘 (disk.qcow2)、配置文件及全局 ISO 镜像缓存库
+data/
+
+# 编辑器与系统文件
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
