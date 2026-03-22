@@ -41,6 +41,7 @@ class ConfigManager:
             "disk_size_gb": disk_size_gb,
             "disk_path": disk_path,
             "iso_path": "", # 将在下载完成后更新
+            "boot_from_iso": True,
             "mac_address": f"52:54:00:{os.urandom(3).hex(':', 1)}",
             "status": "已停止"
         }

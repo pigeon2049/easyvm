@@ -29,6 +29,12 @@ class QemuEngine:
         
         subprocess.run(cmd, creationflags=creationflags, check=True)
 
+    def resize_disk(self, disk_path, new_size_gb):
+        qemu_img_cmd = QEMU_IMG if os.path.exists(QEMU_IMG) else "qemu-img"
+        cmd = [qemu_img_cmd, 'resize', disk_path, f"{new_size_gb}G"]
+        creationflags = subprocess.CREATE_NO_WINDOW
+        subprocess.run(cmd, creationflags=creationflags, check=True)
+
     def start_vm(self, vm_config, on_exit_callback=None):
         vm_id = vm_config['id']
         ram = vm_config.get('ram_mb', 1024)
@@ -47,8 +53,14 @@ class QemuEngine:
             '-vga', 'qxl'
         ]
 
+        # 如果指定了 ISO 且文件存在，则挂载光驱并设置为对应优先级启动顺序
+        boot_from_iso = vm_config.get('boot_from_iso', True)
         if iso_path and os.path.exists(iso_path):
-            cmd.extend(['-cdrom', iso_path, '-boot', 'd'])
+            cmd.extend(['-cdrom', iso_path])
+            if boot_from_iso:
+                cmd.extend(['-boot', 'd']) # 首先从光盘引导 (首次装机)
+            else:
+                cmd.extend(['-boot', 'cd']) # 主硬盘设为最高引导，光盘作为第二顺位 (辅助挂载层)
         else:
             cmd.extend(['-boot', 'c'])
         

@@ -1,9 +1,10 @@
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                             QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox)
+                             QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QFileDialog)
 from PyQt5.QtCore import QTimer
 from core.config import config_manager
 from core.qemu_engine import qemu_engine
 from ui.create_vm_dialog import CreateVmDialog
+from ui.edit_vm_dialog import EditVmDialog
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -23,16 +24,19 @@ class MainWindow(QMainWindow):
         
         self.btn_start = QPushButton("启动 (Start)")
         self.btn_stop = QPushButton("关闭 (Stop)")
+        self.btn_eject = QPushButton("光驱控制选项 (Eject/Mount)")
         self.btn_del = QPushButton("删除 (Delete)")
         
         self.btn_new.clicked.connect(self.on_new_vm)
         self.btn_start.clicked.connect(self.on_start_vm)
         self.btn_stop.clicked.connect(self.on_stop_vm)
+        self.btn_eject.clicked.connect(self.on_toggle_iso)
         self.btn_del.clicked.connect(self.on_delete_vm)
         
         toolbar.addWidget(self.btn_new)
         toolbar.addWidget(self.btn_start)
         toolbar.addWidget(self.btn_stop)
+        toolbar.addWidget(self.btn_eject)
         toolbar.addWidget(self.btn_del)
         toolbar.addStretch()
         
@@ -46,6 +50,8 @@ class MainWindow(QMainWindow):
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setColumnHidden(4, True) # 隐藏内部ID列
+        self.table.itemSelectionChanged.connect(self.on_selection_changed)
+        self.table.itemDoubleClicked.connect(self.on_item_double_clicked)
         layout.addWidget(self.table)
         
         # 使用 QTimer 周期性同步后台引擎真实运行状态
@@ -70,6 +76,22 @@ class MainWindow(QMainWindow):
             self.table.setItem(row, 3, QTableWidgetItem(status))
             
             self.table.setItem(row, 4, QTableWidgetItem(vm['id']))
+
+    def on_item_double_clicked(self, item):
+        row = item.row()
+        vm_id = self.table.item(row, 4).text()
+        
+        if vm_id in qemu_engine.running_processes:
+            QMessageBox.warning(self, "提示", "虚拟机正在运行，为避免数据损坏，请先将其关闭后再尝试修改配置。")
+            return
+            
+        vm_config = config_manager.vms.get(vm_id)
+        if not vm_config:
+            return
+            
+        dlg = EditVmDialog(vm_config, self)
+        if dlg.exec_():
+            self.refresh_table()
 
     def get_selected_vm_id(self):
         rows = self.table.selectionModel().selectedRows()
@@ -122,3 +144,39 @@ class MainWindow(QMainWindow):
                 qemu_engine.stop_vm(vm_id)
             config_manager.delete_vm(vm_id)
             self.refresh_table()
+
+    def on_selection_changed(self):
+        vm_id = self.get_selected_vm_id()
+        if not vm_id:
+            self.btn_eject.setText("光驱选项 (无选取对象)")
+            return
+        vm = config_manager.vms.get(vm_id)
+        if vm and vm.get('iso_path'):
+            self.btn_eject.setText("分离此安装盘 (Eject ISO)")
+        else:
+            self.btn_eject.setText("为它挂载光盘 (Mount ISO)")
+
+    def on_toggle_iso(self):
+        vm_id = self.get_selected_vm_id()
+        if not vm_id: 
+            return QMessageBox.information(self, "提示", "请先选择需要操作的虚拟机。")
+        
+        vm = config_manager.vms.get(vm_id)
+        if not vm: return
+        
+        if vm.get('iso_path'):
+            config_manager.update_vm(vm_id, {'iso_path': ''})
+            self.on_selection_changed()
+            if vm_id in qemu_engine.running_processes:
+                QMessageBox.information(self, "分离成功", "系统盘已剥离配置！\n由于当前的虚拟机正在运行，它将在您下次重启机器时将光盘彻底拔出。届时将直接从本地主虚拟硬盘引导。")
+            else:
+                QMessageBox.information(self, "分离成功", "安装光盘已弹出！\n下一次启动该机器时，将直接从原生主硬盘极速引导。")
+        else:
+            iso_path, _ = QFileDialog.getOpenFileName(self, "选择系统或辅助工具镜像 (ISO)", "", "ISO 镜像文件 (*.iso);;所有镜像文件 (*)")
+            if iso_path:
+                config_manager.update_vm(vm_id, {'iso_path': iso_path, 'boot_from_iso': False})
+                self.on_selection_changed()
+                if vm_id in qemu_engine.running_processes:
+                    QMessageBox.information(self, "挂载就绪", "ISO 镜像成功置入光驱舱。\n因为虚拟机正开启，请完全关闭它再重新启动后以便识别这个光盘。引导系统依然从主硬盘优先启动。")
+                else:
+                    QMessageBox.information(self, "挂载成功", "光盘配置成功！\n下次运行启动时这枚光盘可供底层读取。我们已经向内核设置了『硬盘优先启动级』，请随时放心启动跑系统吧。")
