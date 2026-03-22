@@ -44,7 +44,8 @@ class QemuDownloaderDialog(QDialog):
         try:
             # 使用 PowerShell 请求管理员权限并等待安装完成
             # 注意: Windows 上通过 subprocess 调用可能需要隐藏闪烁的控制台
-            args = f'/S "/D={qemu_dir}"'
+            # 修复：NSIS /D 参数绝对不能包含双引号，并且必须作为最后一个参数
+            args = f'/S /D={qemu_dir}'
             ps_command = f"Start-Process -FilePath '{self.installer_path}' -ArgumentList '{args}' -Wait -Verb RunAs -WindowStyle Hidden"
             
             cmd = ['powershell', '-NoProfile', '-WindowStyle', 'Hidden', '-Command', ps_command]
