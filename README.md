@@ -27,12 +27,18 @@ vmapp/
 确保你的系统安装了 Python 3，且位于 Windows 平台。
 
 **开始使用：**
-1. **安装 UI 界面开发依赖引擎**:
+1. **克隆项目到本地并进入目录**:
+```bash
+git clone https://github.com/pigeon2049/easyvm.git
+cd easyvm
+```
+
+2. **安装 UI 界面开发依赖引擎**:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. **启航应用**:
+3. **启航应用**:
 ```bash
 python launcher.py
 ```
