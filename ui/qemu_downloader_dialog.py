@@ -1,6 +1,7 @@
 import os
 import subprocess
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QMessageBox
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QMessageBox, QGroupBox
+from PyQt5.QtCore import QTimer
 from core.downloader import DownloadThread
 
 QEMU_INSTALLER_URL = "https://qemu.weilnetz.de/w64/2026/qemu-w64-setup-20260318.exe"
@@ -8,16 +9,107 @@ QEMU_INSTALLER_URL = "https://qemu.weilnetz.de/w64/2026/qemu-w64-setup-20260318.
 class QemuDownloaderDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("依赖缺失 - 下载 QEMU")
-        self.setFixedSize(400, 150)
+        self.setWindowTitle("📦 下载 QEMU 依赖")
+        self.setFixedSize(500, 280)
+        
+        # 设置对话框样式
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f5f7fa;
+            }
+        """)
         
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # 标题
+        title_label = QLabel("🔧 安装虚拟机核心引擎")
+        title_label.setStyleSheet("""
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            padding: 5px 0;
+        """)
+        layout.addWidget(title_label)
+        
+        # 信息框
+        info_group = QGroupBox("📋 安装信息")
+        info_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 14px;
+                color: #34495e;
+                border: 2px solid #e0e0e0;
+                border-radius: 10px;
+                margin-top: 15px;
+                padding-top: 15px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 8px;
+            }
+        """)
+        
+        info_layout = QVBoxLayout()
+        
         self.label = QLabel("未检测到系统安装 QEMU 环境。\n开始为您自动下载并部署，请稍候...")
-        layout.addWidget(self.label)
+        self.label.setStyleSheet("""
+            color: #34495e;
+            font-size: 13px;
+            padding: 10px;
+            background-color: white;
+            border-radius: 6px;
+        """)
+        self.label.setWordWrap(True)
+        info_layout.addWidget(self.label)
+        
+        info_group.setLayout(info_layout)
+        layout.addWidget(info_group)
+        
+        # 进度框
+        progress_group = QGroupBox("📊 下载进度")
+        progress_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 14px;
+                color: #34495e;
+                border: 2px solid #e0e0e0;
+                border-radius: 10px;
+                margin-top: 15px;
+                padding-top: 15px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 8px;
+            }
+        """)
+        
+        progress_layout = QVBoxLayout()
         
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
-        layout.addWidget(self.progress_bar)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                text-align: center;
+                font-weight: bold;
+                height: 25px;
+                background-color: white;
+            }
+            QProgressBar::chunk {
+                background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #3498db, stop:1 #2ecc71);
+                border-radius: 6px;
+            }
+        """)
+        progress_layout.addWidget(self.progress_bar)
+        
+        progress_group.setLayout(progress_layout)
+        layout.addWidget(progress_group)
         
         self.installer_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'qemu_setup.exe')
         

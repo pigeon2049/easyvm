@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                             QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QFileDialog)
-from PyQt5.QtCore import QTimer
+                             QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QFileDialog, QLabel)
+from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtGui import QFont, QColor, QIcon
 from core.config import config_manager
 from core.qemu_engine import qemu_engine
 from ui.create_vm_dialog import CreateVmDialog
@@ -9,23 +10,79 @@ from ui.edit_vm_dialog import EditVmDialog
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("简易虚拟机控制台")
-        self.resize(800, 400)
+        self.setWindowTitle("✨ 简易虚拟机控制台")
+        self.resize(1000, 600)
+        
+        # 设置窗口背景色
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #f5f7fa;
+            }
+        """)
         
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
+        main_widget.setStyleSheet("background-color: #f5f7fa;")
         
         layout = QVBoxLayout(main_widget)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
         
         # 顶部工具区
-        toolbar = QHBoxLayout()
-        self.btn_new = QPushButton("新建虚拟机")
-        self.btn_new.setStyleSheet("background-color: #0078D7; color: white; padding: 5px;")
+        toolbar_label = QLabel("🖥️ 虚拟机管理控制台")
+        toolbar_label.setStyleSheet("""
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            padding: 10px 0;
+        """)
+        layout.addWidget(toolbar_label)
         
-        self.btn_start = QPushButton("启动 (Start)")
-        self.btn_stop = QPushButton("关闭 (Stop)")
-        self.btn_eject = QPushButton("光驱控制选项 (Eject/Mount)")
-        self.btn_del = QPushButton("删除 (Delete)")
+        toolbar = QHBoxLayout()
+        toolbar.setSpacing(10)
+        
+        # 统一按钮样式
+        button_style = """
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: 2px solid #2980b9;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: bold;
+                min-width: 130px;
+            }
+            QPushButton:hover {
+                background-color: #5dade2;
+                border: 2px solid #3498db;
+                color: white;
+            }
+            QPushButton:pressed {
+                background-color: #2874a6;
+                border: 2px solid #21618c;
+            }
+        """
+        
+        success_style = button_style.replace("#3498db", "#27ae60").replace("#2980b9", "#1e8449").replace("#5dade2", "#58d68d").replace("#2874a6", "#1e8449").replace("#21618c", "#196f3d")
+        danger_style = button_style.replace("#3498db", "#e74c3c").replace("#2980b9", "#c0392b").replace("#5dade2", "#ec7063").replace("#2874a6", "#c0392b").replace("#21618c", "#a93226")
+        warning_style = button_style.replace("#3498db", "#f39c12").replace("#2980b9", "#d68910").replace("#5dade2", "#f5b041").replace("#2874a6", "#d68910").replace("#21618c", "#b9770e")
+        info_style = button_style.replace("#3498db", "#9b59b6").replace("#2980b9", "#7d3c98").replace("#5dade2", "#bb8fce").replace("#2874a6", "#7d3c98").replace("#21618c", "#6c3483")
+        
+        self.btn_new = QPushButton("➕ 新建虚拟机")
+        self.btn_new.setStyleSheet(button_style)
+        
+        self.btn_start = QPushButton("▶️ 启动")
+        self.btn_start.setStyleSheet(success_style)
+        
+        self.btn_stop = QPushButton("⏹️ 关闭")
+        self.btn_stop.setStyleSheet(danger_style)
+        
+        self.btn_eject = QPushButton("💿 光驱控制")
+        self.btn_eject.setStyleSheet(warning_style)
+        
+        self.btn_del = QPushButton("🗑️ 删除")
+        self.btn_del.setStyleSheet(info_style)
         
         self.btn_new.clicked.connect(self.on_new_vm)
         self.btn_start.clicked.connect(self.on_start_vm)
@@ -43,15 +100,73 @@ class MainWindow(QMainWindow):
         layout.addLayout(toolbar)
         
         # 主机展示看板
+        table_label = QLabel("📋 虚拟机列表 (双击可编辑配置)")
+        table_label.setStyleSheet("""
+            font-size: 14px;
+            font-weight: bold;
+            color: #34495e;
+            padding: 10px 0 5px 0;
+        """)
+        layout.addWidget(table_label)
+        
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["主机名称", "系统类型", "已分配内存(MB)", "当前状态", "UID"])
+        self.table.setHorizontalHeaderLabels(["🖥️ 主机名称", "💻 系统类型", "💾 内存(MB)", "📊 当前状态", "UID"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setColumnHidden(4, True) # 隐藏内部ID列
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
         self.table.itemDoubleClicked.connect(self.on_item_double_clicked)
+        
+        # 表格样式美化
+        self.table.setStyleSheet("""
+            QTableWidget {
+                background-color: white;
+                border: 2px solid #e0e0e0;
+                border-radius: 10px;
+                gridline-color: #ecf0f1;
+                font-size: 13px;
+                padding: 5px;
+            }
+            QTableWidget::item {
+                padding: 8px;
+            }
+            QTableWidget::item:selected {
+                background-color: #5dade2;
+                color: white;
+            }
+            QTableWidget::item:hover {
+                background-color: #e8f6f3;
+            }
+            QHeaderView::section {
+                background-color: #34495e;
+                color: white;
+                padding: 10px;
+                border: none;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QTableWidget QTableCornerButton::section {
+                background-color: #34495e;
+                border: none;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f5f7fa;
+                width: 10px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical {
+                background: #bdc3c7;
+                border-radius: 5px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #95a5a6;
+            }
+        """)
+        
         layout.addWidget(self.table)
         
         # 使用 QTimer 周期性同步后台引擎真实运行状态
